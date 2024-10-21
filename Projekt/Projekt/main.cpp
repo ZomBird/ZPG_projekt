@@ -13,13 +13,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
-#include "Models.h"
+#include "Model.h"
 #include "Shader.h"
+#include "App.h"
 
 float points[] = {
-    0.0f, 0.5f, 0.0f,
-    0.5f, -0.5f, 0.0f,
-   -0.5f, -0.5f, 0.0f
+	0.0f, 0.5f, -0.5f,   // Trojúhelník blíže ke kameře
+	0.5f, -0.5f, -0.5f,
+   -0.5f, -0.5f, -0.5f
+};
+
+float rectangleVertices[] = {
+	-0.5f, 0.5f, -1.0f,   // Obdélník dále od kamery
+	 0.5f, 0.5f, -1.0f,
+	-0.5f, -0.5f, -1.0f,
+	 0.5f, 0.5f, -1.0f,
+	 0.5f, -0.5f, -1.0f,
+	-0.5f, -0.5f, -1.0f
 };
 
 const char* vertex_shader =
@@ -29,13 +39,18 @@ const char* vertex_shader =
 "     gl_Position = vec4 (vp, 1.0);"
 "}";
 
-
-
-const char* fragment_shader =
+const char* fragment_shader1 =
 "#version 330\n"
 "out vec4 frag_colour;"
 "void main () {"
-"     frag_colour = vec4 (0.5, 0.0, 0.5, 1.0);"
+"    frag_colour = vec4(0.5, 0.0, 0.5, 1.0);"
+"}";
+
+const char* fragment_shader2 =
+"#version 330\n"
+"out vec4 frag_colour;"
+"void main () {"
+"    frag_colour = vec4(0.0, 0.5, 0.5, 1.0);"
 "}";
 
 static void error_callback(int error, const char* description) { fputs(description, stderr); }
@@ -68,63 +83,32 @@ glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.01f, 100.0f);
 
 // Camera matrix
 glm::mat4 View = glm::lookAt(
-    glm::vec3(10, 10, 10), // Camera is at (4,3,-3), in World Space
-    glm::vec3(0, 0, 0), // and looks at the origin
-    glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
+	glm::vec3(10, 10, 10), // Camera is at (4,3,-3), in World Space
+	glm::vec3(0, 0, 0), // and looks at the origin
+	glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
 );
 // Model matrix : an identity matrix (model will be at the origin)
-glm::mat4 Model = glm::mat4(1.0f);
+glm::mat4 Models = glm::mat4(1.0f);
+
 
 
 int main()
-{ 
-    GLFWwindow* window;
-    glfwSetErrorCallback(error_callback);
-    if (!glfwInit()) {
-        fprintf(stderr, "ERROR: could not start GLFW3\n");
-        exit(EXIT_FAILURE);
-    }
+{
+	// Vytvoření shaderu
+	App app;
+	Model model01(points, sizeof(points), 3);
+	Shader shader01(vertex_shader, fragment_shader1);
+	Shader shader02(vertex_shader, fragment_shader2);
+	Model regtangle(rectangleVertices, sizeof(rectangleVertices), 6);
 
-    window = glfwCreateWindow(800, 600, "ZPG", NULL, NULL);
-    if (!window) {
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
 
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
 
-    // Inicializace GLEW
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        fprintf(stderr, "ERROR: Failed to initialize GLEW\n");
-        return -1;
-    }
-    glewInit();
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    float ratio = width / (float)height;
-    glViewport(0, 0, width, height);
-    // Vytvoření shaderu
+	app.addObject(regtangle, shader01);
+	app.addObject(model01, shader02);
 
-    Models model01(points,sizeof(points));
-    Shader shader01(vertex_shader, fragment_shader);
+	app.Run();
 
-    // Vytvoření modelu trojúhelníku
-    //Models triangleModel(triangleVertices, sizeof(triangleVertices));  // Vytvoření modelu
-    
-    // Hlavní smyčka vykreslování
-    while (!glfwWindowShouldClose(window)) {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        //glClearColor(0.2f, 0.2f, 0.2f, 1.0f); // Barva pozadi
-        shader01.Use();
-        model01.Draw();
-        glfwPollEvents();
-        glfwSwapBuffers(window);
-    }
 
-    // Ukončení
-    glfwDestroyWindow(window);
-    glfwTerminate();
+
 	exit(EXIT_SUCCESS);
 }
